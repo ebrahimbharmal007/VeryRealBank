@@ -2,45 +2,40 @@ package main
 
 import (
 	"math/rand"
-	"net/http"
-	"time"
 )
 
-type Account struct {
-	ID        int       `json:"id"`
-	FirstName string    `json:"first_name"`
-	LastName  string    `json:"last_name"`
-	Number    int64     `json:"number"`
-	Balance   int64     `json:"balance"`
-	CreatedAt time.Time `json:"created_at"`
+type User struct {
+	FirstName            string `json:"first_name"`
+	LastName             string `json:"last_name"`
+	Email                string `json:"email"`
+	PhoneNumber          int64  `json:"phone_number"`
+	IdentificationNumber int64  `json:"identification_number"`
 }
 
-func NewAccount(firstName, lastName string) *Account {
+type Account struct {
+	PrimaryUser   User  `json:"primary_user"`
+	AccountNumber int64 `json:"account_number"`
+	Balance       int64 `json:"balance"`
+}
+
+func CreateNewAccount(firstName string, lastName string, email string, phoneNumber int64, identificationNumber int64) *Account {
+	user := User{
+		FirstName:            firstName,
+		LastName:             lastName,
+		Email:                email,
+		PhoneNumber:          phoneNumber,
+		IdentificationNumber: identificationNumber,
+	}
 	return &Account{
-		FirstName: firstName,
-		LastName:  lastName,
-		Number:    int64(rand.Intn(1000000)),
-		CreatedAt: time.Now().UTC(),
+		PrimaryUser:   user,
+		AccountNumber: 283050400000 + rand.Int63n(99999-10000) + 10000,
 	}
 }
 
 type CreateAccountRequest struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-}
-
-type TransferRequest struct {
-	ToAccount string `json:"toAccount"`
-	Amount    string `json:"amount"`
-}
-
-type apiFunc func(http.ResponseWriter, *http.Request) error
-
-type ApiError struct {
-	Error string `json:"error"`
-}
-
-type APIServer struct {
-	listenAddr string
-	store      Storage
+	FirstName            string `json:"first_name" validate:"required"`
+	LastName             string `json:"last_name" validate:"required"`
+	Email                string `json:"email" validate:"email,required"`
+	PhoneNumber          int64  `json:"phone_number" validate:"required,min=1000000000,max=9999999999"`
+	IdentificationNumber int64  `json:"identification_number" validate:"required,min=1000000,max=999999999"`
 }
