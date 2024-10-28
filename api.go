@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"log"
 	"net/http"
@@ -19,8 +20,13 @@ type ApiError struct {
 	Error string `json:"error"`
 }
 
+type Message struct {
+	Message string `json:"message"`
+}
+
 type APIServer struct {
-	listenAddr string
+	port    string
+	service Service
 }
 
 func WriteJSON(w http.ResponseWriter, status int, v any) error {
@@ -37,18 +43,24 @@ func makeHTTPHandleFunc(f apiFunc) http.HandlerFunc {
 	}
 }
 
-func NewAPIServer(listenAddr string) *APIServer {
+func NewAPIServer(port string, service Service) *APIServer {
 	return &APIServer{
-		listenAddr: listenAddr,
+		port:    port,
+		service: service,
 	}
 }
 
 func (s *APIServer) Run() {
-	log.Println("JSON API server running on port: ", s.listenAddr)
-
 	router := mux.NewRouter()
 	router.HandleFunc("/account", makeHTTPHandleFunc(s.handleCreateAccount)).Methods("POST")
-	http.ListenAndServe(s.listenAddr, router)
+	router.HandleFunc("/account", makeHTTPHandleFunc(s.handleGetAllAccounts)).Methods("GET")
+	router.HandleFunc("/account/{accnum}", makeHTTPHandleFunc(s.handleGetAccount)).Methods("GET")
+	router.HandleFunc("/account/{accnum}", makeHTTPHandleFunc(s.handleDeleteAccount)).Methods("DELETE")
+
+	log.Printf("Bank JSON API server is running on port %s", s.port)
+	if err := http.ListenAndServe(":"+s.port, router); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 }
 
 func (s *APIServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) error {
@@ -64,7 +76,55 @@ func (s *APIServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) 
 
 		return fmt.Errorf("invalid input data")
 	}
-	account := CreateNewAccount(createAccountReq.FirstName, createAccountReq.LastName, createAccountReq.Email, createAccountReq.PhoneNumber, createAccountReq.IdentificationNumber)
+
+	account, err := s.service.CreateNewAccount(*createAccountReq)
+
+	if err != nil {
+		log.Printf("Error creating account account: %v", err)
+		return WriteJSON(w, http.StatusInternalServerError, err)
+	}
+	// account := CreateNewAccount(createAccountReq.FirstName, createAccountReq.LastName, createAccountReq.Email, createAccountReq.PhoneNumber, createAccountReq.IdentificationNumber)
 
 	return WriteJSON(w, http.StatusOK, account)
+}
+
+func (s *APIServer) handleGetAllAccounts(w http.ResponseWriter, r *http.Request) error {
+
+	accounts, err := s.service.GetAccounts()
+
+	if err != nil {
+		log.Printf("Unable to retrieve all accounts: %v", err)
+		return WriteJSON(w, http.StatusInternalServerError, err)
+	}
+	return WriteJSON(w, http.StatusOK, accounts)
+}
+
+func (s *APIServer) handleGetAccount(w http.ResponseWriter, r *http.Request) error {
+	idStr := mux.Vars(r)["accnum"]
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return fmt.Errorf("account %s not found", idStr)
+	}
+	account, err := s.service.GetAccount(int64(id))
+
+	if err != nil {
+		log.Printf("Unable to retrieve account: %v", err)
+		return WriteJSON(w, http.StatusInternalServerError, ApiError{Error: err.Error()})
+	}
+	return WriteJSON(w, http.StatusOK, account)
+}
+
+func (s *APIServer) handleDeleteAccount(w http.ResponseWriter, r *http.Request) error {
+	idStr := mux.Vars(r)["accnum"]
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		return fmt.Errorf("account %s not found", idStr)
+	}
+	err = s.service.DeleteAccount(int64(id))
+
+	if err != nil {
+		log.Printf("Unable to delete account: %v", err)
+		return WriteJSON(w, http.StatusInternalServerError, ApiError{Error: err.Error()})
+	}
+	return WriteJSON(w, http.StatusOK, Message{Message: "Account Deleted Successfully"})
 }

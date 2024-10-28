@@ -1,7 +1,7 @@
 package main
 
 import (
-	"math/rand"
+	"time"
 )
 
 type User struct {
@@ -12,25 +12,34 @@ type User struct {
 	IdentificationNumber int64  `json:"identification_number"`
 }
 
-type Account struct {
-	PrimaryUser   User  `json:"primary_user"`
-	AccountNumber int64 `json:"account_number"`
-	Balance       int64 `json:"balance"`
+type Transaction struct {
+	TransactionNumber int64     `json:"transaction_number"`
+	Description       string    `json:"description"`
+	Amount            int64     `json:"amount"`
+	Date              time.Time `json:"date"`
 }
 
-func CreateNewAccount(firstName string, lastName string, email string, phoneNumber int64, identificationNumber int64) *Account {
-	user := User{
-		FirstName:            firstName,
-		LastName:             lastName,
-		Email:                email,
-		PhoneNumber:          phoneNumber,
-		IdentificationNumber: identificationNumber,
-	}
-	return &Account{
-		PrimaryUser:   user,
-		AccountNumber: 283050400000 + rand.Int63n(99999-10000) + 10000,
-	}
+type Account struct {
+	PrimaryUser   User           `json:"primary_user"`
+	AccountNumber int64          `json:"account_number"`
+	Balance       int64          `json:"balance"`
+	Transactions  []*Transaction `json:"transactions"`
 }
+
+// func CreateNewAccount(firstName string, lastName string, email string, phoneNumber int64, identificationNumber int64) *Account {
+// 	user := User{
+// 		FirstName:            firstName,
+// 		LastName:             lastName,
+// 		Email:                email,
+// 		PhoneNumber:          phoneNumber,
+// 		IdentificationNumber: identificationNumber,
+// 	}
+// 	return &Account{
+// 		PrimaryUser:   user,
+// 		AccountNumber: 283050400000 + rand.Int63n(99999-10000) + 10000,
+// 		Transactions:  []*Transaction{},
+// 	}
+// }
 
 type CreateAccountRequest struct {
 	FirstName            string `json:"first_name" validate:"required"`
