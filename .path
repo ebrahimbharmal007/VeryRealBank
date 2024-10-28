@@ -1,0 +1,13 @@
+.
+├── api.go
+├── bin
+│ └── gobank
+├── Dockerfile
+├── go.mod
+├── go.sum
+├── main.go
+├── Makefile
+├── storage.go
+└── types.go
+
+1 directory, 9 files
